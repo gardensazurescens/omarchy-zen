@@ -15,7 +15,12 @@ import os
 import re
 import sys
 
-TOML_VAR = re.compile(r'^\s*([A-Za-z0-9_]+)\s*=\s*"([^"]*)"\s*$')
+# Quoted values may be followed by an inline `# comment` (themes do this, e.g.
+# falling-leaves decorates every colorN). Match the quoted value without
+# anchoring on end-of-line so the comment is ignored; bare values cover keys
+# like `mode = dark`.
+TOML_VAR = re.compile(r'^\s*([A-Za-z0-9_]+)\s*=\s*"([^"]*)"')
+TOML_BARE = re.compile(r'^\s*([A-Za-z0-9_]+)\s*=\s*([A-Za-z0-9_]+)\s*$')
 TPL_VAR = re.compile(r'\{\{\s*([A-Za-z0-9_]+)\s*\}\}')
 HEX_RE = re.compile(r'^#?[0-9a-fA-F]{6}$')
 FALLBACK = '#11111b'
@@ -24,10 +29,11 @@ FALLBACK = '#11111b'
 def parse(toml_path):
     values = {}
     for line in Path(toml_path).read_text(encoding='utf-8').splitlines():
-        m = TOML_VAR.match(line)
+        m = TOML_VAR.match(line) or TOML_BARE.match(line)
         if m:
             values[m.group(1)] = m.group(2)
-    return {k: v for k, v in values.items() if HEX_RE.match(v) or k in ('mode', 'theme_type')}
+    return {k: v for k, v in values.items()
+            if HEX_RE.match(v) or k in ('mode', 'theme_type')}
 
 
 def luminance(hex_color):
@@ -78,54 +84,80 @@ def mix(hex_a, hex_b, pct):
                          for i in range(3))
 
 
-def theme_mode(values):
+def theme_mode(values, toml_path=None):
     for key in ('mode', 'theme_type'):
-        if key in values:
+        if values.get(key):
             return values[key]
-    if 'background' in values:
-        if luminance(values['background']) >= 0.5:
-            return 'light'
-        return 'dark'
+    if toml_path and (Path(toml_path).parent / 'light.mode').is_file():
+        return 'light'
+    bg = values.get('background') or values.get('color0')
+    if bg and HEX_RE.match(bg):
+        # Omarchy's luminance rule: sum of RGB channels above 382 is light.
+        r, g, b = (int(bg[i:i + 2], 16) for i in (1, 3, 5))
+        return 'light' if r + g + b > 382 else 'dark'
     return 'dark'
 
 
+def resolve(values):
+    """Mirror Omarchy's alias cascade (omarchy-theme-color) for the keys this
+    renderer consumes: semantic names, legacy short names, and the ANSI
+    colorN names. Keeping this in sync means the fallback render matches the
+    palette Omarchy bakes into the generated configs."""
+    v = dict(values)
+
+    def alias(target, *sources):
+        if not v.get(target):
+            for source in sources:
+                if v.get(source):
+                    v[target] = v[source]
+                    return
+
+    for canonical, short in (('background', 'bg'), ('foreground', 'fg'),
+                             ('dark_background', 'dark_bg'),
+                             ('dark_foreground', 'dark_fg'),
+                             ('bright_foreground', 'bright_fg')):
+        alias(canonical, short)
+
+    # Semantic <-> ANSI fallbacks. Canonical names win when both exist.
+    alias('background', 'color0')
+    alias('foreground', 'color7')
+    if v.get('background'):
+        v['color0'] = v['background']
+    if v.get('foreground'):
+        v['color7'] = v['foreground']
+
+    for ansi, name in (('color1', 'red'), ('color2', 'green'), ('color3', 'yellow'),
+                       ('color4', 'blue'), ('color5', 'magenta'), ('color6', 'cyan')):
+        alias(ansi, name)
+        alias(name, ansi)
+
+    alias('magenta', 'purple')
+    alias('muted', 'color8', 'dark_foreground', 'foreground')
+    alias('selection_background', 'selection', 'color8', 'color0', 'background')
+    alias('selection_foreground', 'bright_foreground', 'color15', 'foreground')
+    return v
+
+
 def palette(values):
-    if 'color0' in values:
-        base = {
-            'color%d' % i: values.get('color%d' % i, values.get('background', FALLBACK))
-            for i in range(16)
-        }
-        fg = values.get('color7', values.get('foreground', '#cdd6f4'))
-    else:
-        source = {
-            'red': 'red', 'green': 'green', 'yellow': 'yellow', 'blue': 'blue',
-            'cyan': 'cyan', 'pink': 'pink', 'magenta': 'magenta',
-        }
-        base = {
-            'color0': values.get('background', FALLBACK),
-            'color1': values.get(source['red'], FALLBACK),
-            'color2': values.get(source['green'], FALLBACK),
-            'color3': values.get(source['yellow'], FALLBACK),
-            'color4': values.get(source['blue'], FALLBACK),
-            'color5': values.get(source['magenta'], values.get(source['pink'], FALLBACK)),
-            'color6': values.get(source['cyan'], FALLBACK),
-            'color7': values.get('foreground', '#cdd6f4'),
-            'color8': values.get('muted', FALLBACK),
-        }
-        for i in range(9, 16):
-            base['color%d' % i] = base['color%d' % (i - 8)]
-        fg = values.get('foreground', '#cdd6f4')
+    v = resolve(values)
+    bg = v.get('color0') or v.get('background') or FALLBACK
+    fg = v.get('color7') or v.get('foreground') or '#cdd6f4'
+
+    base = {'color%d' % i: (v.get('color%d' % i) or bg) for i in range(16)}
+    base['color0'] = bg
+    base['color7'] = fg
+    base['color8'] = v.get('color8') or v.get('muted') or fg
+
     base['foreground_rgb'] = '%d,%d,%d' % (
         int(fg[1:3], 16), int(fg[3:5], 16), int(fg[5:7], 16))
-    base['selection_background'] = values.get(
-        'selection_background',
-        values.get('selection', values.get('color0', values.get('background', FALLBACK))))
-    base['selection_foreground'] = values.get('selection_foreground', fg)
-    accent = values.get('accent', FALLBACK)
-    bg = base['color0']
-    # Panel = background tinted slightly toward foreground (matches the tpl).
-    panel = mix(bg, fg, 88)
-    if values['mode'] == 'light':
+    base['selection_background'] = (
+        v.get('selection_background') or v.get('selection') or bg)
+    base['selection_foreground'] = v.get('selection_foreground') or fg
+    accent = v.get('accent') or fg
+    # Panel = background tinted slightly toward the accent (matches the tpl).
+    # Tinting toward foreground washed low-chroma palettes to neutral gray.
+    panel = mix(bg, accent, 88)
+    if values.get('mode') == 'light':
         # Light theme: hovered/selected text must be legible on the light
         # panel, so darken the accent; pressed darkens less. A blind
         # color-mix to white produced near-white on white (unreadable tab).
@@ -143,7 +175,7 @@ def main():
         print(__doc__)
         return 2
     values = parse(sys.argv[1])
-    values['mode'] = theme_mode(values)
+    values['mode'] = theme_mode(values, sys.argv[1])
     values.update(palette(values))
     if len(sys.argv) > 3:
         tpl_path = Path(sys.argv[3])

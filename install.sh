@@ -169,6 +169,11 @@ if [[ -f $stamp_file ]] && [[ $stamp_value == "$(cat "$stamp_file")" ]] \
   exit 0
 fi
 
+# Past the fast path means the plugin version or the shipped assets changed, so
+# the state sheet must be regenerated even if its background hex is unchanged
+# (e.g. an upgrade that only retunes the panel or the ANSI slots).
+force_render=1
+
 # `omarchy-hook theme-set` runs ~/.config/omarchy/hooks/theme-set.d/* in
 # alphabetical order and waits on every one of them, so the installed filename
 # decides when the "Theme changed" notification shows up. The bare
@@ -296,7 +301,7 @@ if [[ -f $state_dir/render-custom-zen.py && -f $_theme_root/colors.toml ]]; then
   if [[ -f $_theme_custom_css ]]; then
     _actual="$(sed -n 's/.*--custom-zen-bg: *\(#[0-9a-fA-F]\{6\}\);.*/\1/p' "$_theme_custom_css" | head -n1)"
   fi
-  if [[ $_expected != "$_actual" ]]; then
+  if [[ ${force_render:-0} == 1 || $_expected != "$_actual" ]]; then
     if timeout 30 python3 "$state_dir/render-custom-zen.py" "$_theme_root/colors.toml" "$_theme_custom_css" \
       >/dev/null 2>&1; then
       echo "Re-rendered custom-zen.css from the current palette."
