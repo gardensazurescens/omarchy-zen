@@ -211,6 +211,9 @@ Two people besides the maintainer have work merged into this repository right no
 
 ## Changelog
 
+### 1.5.3
+- **Chrome panel uses a chromatic tint** — `--custom-zen-panel` is now `color-mix(background 82%, color4)`. 1.5.1 tinted toward `accent`, but some themes set `accent` to a near-white foreground (kanagawa `#dcd7ba`), which mixed the chrome back to neutral gray. The theme's blue (`color4`) carries a hue for every real ANSI palette and stays neutral for gray themes.
+
 ### 1.5.2
 - **Optional web font** — `tools/zen-font.sh` + a `font-set` hook apply a family (default: the Omarchy font via `omarchy font current`) to the chrome and, unless `ZEN_FONT_CONTENT=0`, to page content. Config: `~/.config/omarchy-zen-font.conf`. See *Web font*.
 

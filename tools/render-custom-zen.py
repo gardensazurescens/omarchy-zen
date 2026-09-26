@@ -154,9 +154,11 @@ def palette(values):
         v.get('selection_background') or v.get('selection') or bg)
     base['selection_foreground'] = v.get('selection_foreground') or fg
     accent = v.get('accent') or fg
-    # Panel = background tinted slightly toward the accent (matches the tpl).
-    # Tinting toward foreground washed low-chroma palettes to neutral gray.
-    panel = mix(bg, accent, 88)
+    # Panel = background tinted toward the theme's blue (color4), matching the
+    # tpl. Tinting toward foreground/accent washed palettes whose accent is a
+    # near-white (e.g. kanagawa #dcd7ba) back to neutral gray; color4 carries a
+    # hue for every real ANSI palette and stays neutral for gray themes.
+    panel = mix(bg, v.get('color4') or v.get('blue') or accent, 82)
     if values.get('mode') == 'light':
         # Light theme: hovered/selected text must be legible on the light
         # panel, so darken the accent; pressed darkens less. A blind

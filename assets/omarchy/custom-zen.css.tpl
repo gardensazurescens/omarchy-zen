@@ -9,7 +9,7 @@
   --custom-zen-surface-2: {{ color8 }};
 
   --custom-zen-border: color-mix(in srgb, {{ background }} 80%, {{ foreground }});
-  --custom-zen-panel: color-mix(in srgb, {{ background }} 88%, {{ accent }});
+  --custom-zen-panel: color-mix(in srgb, {{ background }} 82%, {{ color4 }});
 
   --custom-zen-accent-hover: {{ accent_hover }};
   --custom-zen-accent-active: {{ accent_active }};
