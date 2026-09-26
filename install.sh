@@ -267,7 +267,13 @@ rm -rf "$HOME/.local/lib/zen-auto-style"
 rm -f "$HOME/.mozilla/native-messaging-hosts/org.omarchy.zen_auto_style.json"
 rm -rf "$HOME/.cache/zen-auto-style"
 
-if command -v omarchy >/dev/null 2>&1; then
+# `omarchy theme refresh` re-runs the whole theme-set pipeline, which restarts
+# running apps (terminals, opencode, ...) via post_theme_commands. Set
+# OMARCHY_ZEN_SKIP_THEME_REFRESH=1 for non-disruptive automation; the
+# deterministic guard below still (re)renders custom-zen.css from colors.toml.
+if [[ ${OMARCHY_ZEN_SKIP_THEME_REFRESH:-0} == 1 ]]; then
+  echo "Skipping 'omarchy theme refresh' (OMARCHY_ZEN_SKIP_THEME_REFRESH=1)."
+elif command -v omarchy >/dev/null 2>&1; then
   if ! timeout 30 omarchy theme refresh >/dev/null 2>&1; then
     echo "Warning: 'omarchy theme refresh' failed; run it manually." >&2
   fi
@@ -280,11 +286,16 @@ fi
 # behind. Verify the state sheet matches the resolved palette and re-render
 # from colors.toml if it does not.
 _theme_root="$(dirname "$_theme_custom_css")"
-if [[ -f $state_dir/render-custom-zen.py && -f $_theme_root/colors.toml && -f $_theme_custom_css ]]; then
+if [[ -f $state_dir/render-custom-zen.py && -f $_theme_root/colors.toml ]]; then
   _expected="$(sed -n 's/^background *= *"\(#[0-9a-fA-F]\{6\}\)"/\1/p' "$_theme_root/colors.toml" | head -n1)"
   # The declaration is indented inside `:root`, so eat everything before it or
   # the extracted value keeps its leading spaces and never compares equal.
-  _actual="$(sed -n 's/.*--custom-zen-bg: *\(#[0-9a-fA-F]\{6\}\);.*/\1/p' "$_theme_custom_css" | head -n1)"
+  # A missing sheet (e.g. refresh skipped on first install) renders as empty and
+  # is created here.
+  _actual=""
+  if [[ -f $_theme_custom_css ]]; then
+    _actual="$(sed -n 's/.*--custom-zen-bg: *\(#[0-9a-fA-F]\{6\}\);.*/\1/p' "$_theme_custom_css" | head -n1)"
+  fi
   if [[ $_expected != "$_actual" ]]; then
     if timeout 30 python3 "$state_dir/render-custom-zen.py" "$_theme_root/colors.toml" "$_theme_custom_css" \
       >/dev/null 2>&1; then
