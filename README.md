@@ -4,6 +4,33 @@ Syncs Omarchy's Pywal palette into Zen Browser — pure CSS, no extensions, no p
 
 > **Started as a fork of [gstrand99/zen-auto-style](https://github.com/gstrand99/zen-auto-style)** by Gregory Strand (MIT) — original template, CSS and extension. It has since grown well past its source: Omarchy 4.x support, a hardened CSS-only install, WCAG-legible theming, themed selection on every site, and live reload with no extension or weakened prefs. The original extension lives on unchanged in [`legacy/`](legacy/).
 
+## Personal fork: Dark Reader sync
+
+This is [gardensazurescens](https://github.com/gardensazurescens)'s fork of
+[Davidxap/omarchy-zen](https://github.com/Davidxap/omarchy-zen). It carries one
+addition on top of upstream: the live-reload autoconfig script
+([`live/omarchy-zen.cfg`](live/omarchy-zen.cfg)) also mirrors the active Omarchy
+palette into **Dark Reader's** `theme` settings, so ordinary website content
+follows the same palette as the browser chrome.
+
+- Maps `--custom-zen-bg/fg/selection-bg/color-scheme` onto Dark Reader's
+  `theme.darkSchemeBackgroundColor`, `darkSchemeTextColor`, `selectionColor`,
+  `engine: dynamicTheme` and `mode`, and pins `syncSettings: false` so the
+  written theme is the one that is actually read.
+- Dark Reader only reads its settings at startup, so the script writes storage
+  and then `reload()`s the extension. The parent `Extension` object is not
+  registered until shortly after `final-ui-startup`, so it retries each tick.
+- No-ops when Dark Reader is absent or disabled. Set `DARKREADER.enabled = false`
+  in the cfg to disable the sync entirely.
+- Errors are reported to the Browser Console and to
+  `<profile>/omarchy-zen-dr.log`; nothing is written on the success path.
+- Note for Firefox 156+: `IOUtils` moved into `FileUtils`; the old
+  `resource://gre/modules/IOUtils.sys.mjs` URL no longer resolves and importing
+  it aborts autoconfig entirely.
+
+Upstream is tracked as the `upstream` remote; merge from it to absorb fixes.
+Everything else below is upstream documentation.
+
 ## Screenshots
 
 Themes used, left to right: **Osiris**, **Woman with Floral Composition**, **BlackTurq**. Osiris is available from [xElectric9177/Osiris](https://github.com/xElectric9177/Osiris); Woman with Floral Composition is found through the [omarchy-themes plugin](https://omarchyplugins.com/plugin.html?id=gotar.omarchy-themes) (install themes directly from the marketplace); BlackTurq is available from [HANCORE-linux/omarchy-blackturq-theme](https://github.com/HANCORE-linux/omarchy-blackturq-theme).
