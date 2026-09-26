@@ -116,10 +116,13 @@ fi
 # dir goes away; only a user-customized template is preserved.
 rm -f "$HOME/.config/omarchy/hooks/theme-set.d/00-zen-auto-style"
 rm -f "$HOME/.config/omarchy/hooks/theme-set.d/zen-auto-style" # pre-1.4.1 name
+rm -f "$HOME/.config/omarchy/hooks/font-set.d/00-zen-auto-style"
 rm -f "$HOME/.local/state/zen-auto-style/installed"
 rm -f "$HOME/.local/state/zen-auto-style/render-custom-zen.py"
+rm -f "$HOME/.local/state/zen-auto-style/zen-font.sh"
 rm -rf "$HOME/.local/state/zen-auto-style/__pycache__"
 rm -rf "$HOME/.local/state/zen-auto-style/backups"
+rm -rf "$HOME/.local/state/zen-auto-style/font-backups"
 rdir="$HOME/.local/state/zen-auto-style"
 if [[ -d $rdir ]] && [[ -z $(ls -A "$rdir") ]]; then
   rmdir "$rdir"
@@ -163,6 +166,10 @@ if zen_profile="$(find_zen_profile)"; then
     "$zen_profile/user.js" \
     '// BEGIN ZEN AUTO STYLE' \
     '// END ZEN AUTO STYLE'
+  remove_managed_block \
+    "$zen_profile/user.js" \
+    '// BEGIN OMARCHY ZEN FONT' \
+    '// END OMARCHY ZEN FONT'
 
   remove_exact_line "$chrome_dir/userChrome.css" '@import url("zen-auto-style-chrome.css");'
   remove_exact_line "$chrome_dir/userChrome.css" '@import url("zen-auto-style-mods.css");'
@@ -178,7 +185,8 @@ if zen_profile="$(find_zen_profile)"; then
     "$chrome_dir/zen-auto-style-chrome.css" \
     "$chrome_dir/zen-auto-style-content.css" \
     "$chrome_dir/zen-auto-style-mods.css" \
-    "$chrome_dir/custom-zen.css"
+    "$chrome_dir/custom-zen.css" \
+    "$chrome_dir/custom-zen-font.css"
   rm -rf "$chrome_dir/zen-auto-style-mods"
 fi
 

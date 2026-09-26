@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# Omarchy Zen font-set hook.
+#
+# Omarchy runs ~/.config/omarchy/hooks/font-set.d/* after `omarchy font set`,
+# passing the new family. The rice resolves the family from `omarchy font
+# current` itself (so it also honors ~/.config/omarchy-zen-font.conf), and
+# re-applies the chrome CSS and the user.js prefs. Zen picks the new font up on
+# its next start.
+#
+# Risks: none — every step is time-boxed and failure must never break
+# `omarchy font set`.
+
+script="$HOME/.local/state/zen-auto-style/zen-font.sh"
+[[ -x $script ]] || exit 0
+
+timeout 15 "$script" apply --quiet >/dev/null 2>&1 || true
+
+true

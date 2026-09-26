@@ -23,7 +23,9 @@ bash -n \
   "$project_dir/uninstall.sh" \
   "$project_dir/test-fresh-install.sh" \
   "$project_dir/verify.sh" \
-  "$project_dir/omarchy/theme-set-hook"
+  "$project_dir/omarchy/theme-set-hook" \
+  "$project_dir/omarchy/font-set-hook" \
+  "$project_dir/tools/zen-font.sh"
 
 if rg -n 'YOUR-USER|TODO|FIXME|youremail' \
   "$project_dir" \

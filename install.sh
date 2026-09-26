@@ -4,6 +4,7 @@ set -euo pipefail
 
 project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 hook_dir="$HOME/.config/omarchy/hooks/theme-set.d"
+font_hook_dir="$HOME/.config/omarchy/hooks/font-set.d"
 template_dir="$HOME/.config/omarchy/themed"
 if [[ -n ${ZEN_CONFIG_DIR:-} ]]; then
   zen_root="$ZEN_CONFIG_DIR"
@@ -146,8 +147,16 @@ chrome_dir="$zen_profile/chrome"
 
 mkdir -p \
   "$hook_dir" \
+  "$font_hook_dir" \
   "$template_dir" \
   "$chrome_dir"
+
+# Apply or refresh the optional web font (chrome CSS + user.js prefs) before the
+# fast path, so editing ~/.config/omarchy-zen-font.conf still takes effect even
+# when the rice assets themselves are unchanged. Disabled config cleans up.
+if [[ -x $project_dir/tools/zen-font.sh ]]; then
+  "$project_dir/tools/zen-font.sh" apply --profile "$zen_profile" --quiet || true
+fi
 
 # Fast path: if this exact plugin version is already installed and the wiring
 # is intact, there is nothing to do. Keeps the service's per-login run in the
@@ -163,6 +172,8 @@ if [[ -f $stamp_file ]] && [[ $stamp_value == "$(cat "$stamp_file")" ]] \
   && cmp -s "$project_dir/assets/zen/zen-auto-style-chrome.css" "$chrome_dir/zen-auto-style-chrome.css" 2>/dev/null \
   && cmp -s "$project_dir/assets/zen/zen-auto-style-content.css" "$chrome_dir/zen-auto-style-content.css" 2>/dev/null \
   && cmp -s "$project_dir/omarchy/theme-set-hook" "$hook_dir/00-zen-auto-style" \
+  && cmp -s "$project_dir/omarchy/font-set-hook" "$font_hook_dir/00-zen-auto-style" 2>/dev/null \
+  && cmp -s "$project_dir/tools/zen-font.sh" "$state_dir/zen-font.sh" 2>/dev/null \
   && [[ ! -e $hook_dir/zen-auto-style ]] \
   && [[ -f $state_dir/render-custom-zen.py ]]; then
   echo "Omarchy Zen ${plugin_version:-?} already installed; nothing to do."
@@ -184,6 +195,13 @@ rm -f "$hook_dir/zen-auto-style"
 install_file \
   "$project_dir/omarchy/theme-set-hook" \
   "$hook_dir/00-zen-auto-style" 755
+
+install_file \
+  "$project_dir/omarchy/font-set-hook" \
+  "$font_hook_dir/00-zen-auto-style" 755
+install_file \
+  "$project_dir/tools/zen-font.sh" \
+  "$state_dir/zen-font.sh" 755
 
 mkdir -p "$state_dir"
 install_file \

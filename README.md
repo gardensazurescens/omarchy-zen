@@ -91,6 +91,23 @@ Restart Zen once → `omarchy theme set <name>` → the hook re-renders the shee
 
 No extension, no host, no background process.
 
+## Web font (optional)
+
+Apply a font to both the browser chrome and web page content, kept in step with
+`omarchy font set`:
+
+1. Create `~/.config/omarchy-zen-font.conf` whose first non-comment line is a
+   family name, or `system` to follow the Omarchy font, or `off` to disable.
+2. `./install.sh` (or the next `omarchy theme set`) applies it: a generated
+   `chrome/custom-zen-font.css` is imported by `zen-auto-style-chrome.css`, and
+   `user.js` gets a managed `// BEGIN OMARCHY ZEN FONT` block that forces pages
+   to the same family (`browser.display.use_document_fonts=0`).
+3. A `font-set` hook re-applies it whenever `omarchy font set` changes the
+   system font.
+
+`ZEN_WEB_FONT` overrides the family and `ZEN_FONT_CONTENT=0` themes the chrome
+only. Restart Zen to pick up a change — font prefs are not live.
+
 ## Requirements
 
 - Omarchy with `omarchy` on PATH
@@ -193,6 +210,13 @@ Two people besides the maintainer have work merged into this repository right no
 - **BrunnoVert** ([caniswim](https://github.com/caniswim)) — opened [PR #2](https://github.com/Davidxap/omarchy-zen/pull/2), merged as `40dbcc8`: he moved the `::selection` rules out of the `@-moz-document` URL-matched scope so page text selection follows the active theme on **every** website instead of only the pattern-matched ones. That is the headline feature of 1.3.0. Thank you for the careful CSS work.
 
 ## Changelog
+
+### 1.5.2
+- **Optional web font** — `tools/zen-font.sh` + a `font-set` hook apply a family (default: the Omarchy font via `omarchy font current`) to the chrome and, unless `ZEN_FONT_CONTENT=0`, to page content. Config: `~/.config/omarchy-zen-font.conf`. See *Web font*.
+
+### 1.5.1
+- **Fixed `colors.toml` parsing** — the value regex anchored on end-of-line, so every `colorN` line with a trailing comment (falling-leaves, persica) was dropped and the ANSI slots collapsed to `#11111b`. The parser now accepts inline comments and mirrors Omarchy's alias cascade (`color0=background`, `color7=foreground`, `color8=muted`).
+- **Chrome panel tracks the accent** — `--custom-zen-panel` is now `color-mix(background 88%, accent)`; tinting toward the foreground washed low-chroma palettes to a neutral gray.
 
 ### 1.4.2
 - **The toast clears half as fast** — `Theme changed: <theme>` is posted at `low` urgency. The shell clamps a toast to a floor of 8s for `normal` and 5s for `low`, so `normal` was pinning it on screen for eight seconds. Five seconds is the floor; nothing shorter is reachable from a sender.
